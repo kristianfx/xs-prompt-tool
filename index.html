@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>XS Prompt Tool — Fresh Build v0.2</title>
+<style>
+  :root{
+    --glass:rgba(255,255,255,0.10);
+    --glass-2:rgba(255,255,255,0.06);
+    --text:#eaf0f7;
+    --muted:#a7b5c8;
+    --accent:#4aa3ff;
+    --accent-2:#7ac7ff;
+    --ring: rgba(74,163,255,0.35);
+    --shadow: 0 14px 40px rgba(0,0,0,0.45);
+    --radius: 16px;
+    --radius-pill: 999px;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%; margin:0; color:var(--text);
+    font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    overflow-x:hidden;
+  }
+
+  /* Background video layer */
+  .video-bg{
+    position:fixed; inset:0; z-index:-2; overflow:hidden;
+  }
+  .video-bg video{
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    min-width:100%; min-height:100%;
+    width:auto; height:auto; object-fit:cover;
+  }
+  /* Overlay to preserve contrast */
+  .overlay{
+    position:fixed; inset:0; z-index:-1;
+    background:
+      radial-gradient(60% 60% at 20% 0%, rgba(10,16,24,0.55), transparent 60%),
+      linear-gradient(180deg, rgba(6,10,16,0.55), rgba(6,10,16,0.75));
+    pointer-events:none;
+  }
+
+  .container{ max-width:1100px; margin:44px auto; padding:24px; }
+  .card{
+    background:var(--glass-2);
+    backdrop-filter: blur(18px) saturate(130%);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:var(--radius);
+    box-shadow: var(--shadow);
+    padding:22px;
+  }
+  h1{ margin:0 0 6px; font-size:28px }
+  .sub{ color:var(--muted); margin-bottom:20px }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+  @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
+
+  .field{ display:flex; flex-direction:column; gap:8px; }
+  .label{ color:var(--muted); font-size:13px; letter-spacing:.2px; }
+
+  .pill-group{ display:flex; gap:10px; flex-wrap:wrap; }
+  .pill{
+    padding:8px 14px; border-radius:var(--radius-pill);
+    border:1px solid rgba(255,255,255,0.14);
+    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+    color:var(--text); cursor:pointer; user-select:none;
+    transition: all .2s ease; box-shadow: inset 0 0 0 0px var(--ring);
+  }
+  .pill:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,0.2); }
+  .pill.active{
+    background: linear-gradient(180deg, rgba(74,163,255,0.35), rgba(74,163,255,0.12));
+    border-color: rgba(122,199,255,0.6);
+    box-shadow: inset 0 0 0 2px var(--ring);
+  }
+
+  .input{
+    appearance:none; width:100%; padding:12px 14px;
+    border-radius:12px; border:1px solid rgba(255,255,255,0.14);
+    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+    color:var(--text); outline:none;
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .input:focus{ border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(122,199,255,0.22); }
+
+  /* Dropdown menu */
+  .menu-wrap{ position:relative; display:inline-block; }
+  .menu-button{
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+    color:var(--text);
+    cursor:pointer;
+  }
+  .menu{
+    position:absolute; top:44px; left:0;
+    min-width:280px; z-index:20;
+    border-radius:14px;
+    background: rgba(12,16,22,0.92);
+    backdrop-filter: blur(14px) saturate(120%);
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow: var(--shadow);
+    padding:8px;
+  }
+  .menu.hidden{ display:none; }
+  .menu .section{
+    border-radius:10px; overflow:hidden; margin-bottom:6px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .menu .section > summary{
+    list-style:none; cursor:pointer; padding:10px 12px;
+    background: rgba(255,255,255,0.04); font-weight:600;
+  }
+  .menu .section[open] > summary{ background: rgba(255,255,255,0.07); }
+  .option-row{ display:flex; flex-wrap:wrap; gap:8px; padding:10px 12px 12px; }
+  .option{
+    padding:6px 10px; font-size:13px; border-radius:10px;
+    border:1px solid rgba(255,255,255,0.14);
+    cursor:pointer; user-select:none; background: rgba(255,255,255,0.06);
+    transition:all .15s ease;
+  }
+  .option:hover{ border-color: rgba(255,255,255,0.22); transform: translateY(-1px); }
+  .option.active{ background: rgba(74,163,255,0.28); border-color: rgba(122,199,255,0.6); }
+
+  .summary{ margin-top:18px; padding:14px; border-radius:12px;
+    border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+  .chip{
+    padding:6px 10px; font-size:12px; border-radius:999px;
+    background: rgba(74,163,255,0.22); border:1px solid rgba(122,199,255,0.5);
+  }
+
+  /* Modal + blur */
+  .blurred{ filter: blur(4px); pointer-events: none; user-select:none; }
+  .modal-backdrop{
+    position: fixed; inset:0; background: rgba(10,14,17,0.45);
+    backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:center; z-index:100;
+  }
+  .modal{
+    width:min(560px, 92vw);
+    background: rgba(20,26,34,0.86);
+    backdrop-filter: blur(16px) saturate(140%);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:20px; padding:20px; box-shadow: var(--shadow); text-align:center;
+  }
+  .modal h3{ margin:0 0 6px; font-size:20px }
+  .modal p{ color:var(--muted); margin:0 0 16px }
+  .modal .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap }
+  .btn{
+    padding:10px 14px; border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+    color:var(--text); cursor:pointer;
+  }
+  .btn.ok{ border-color: rgba(53,213,143,0.6); background: rgba(53,213,143,0.18); }
+  .btn.cancel{ border-color: rgba(255,93,115,0.6); background: rgba(255,93,115,0.18); }
+
+  .note{ font-size:12px; color:var(--muted) }
+</style>
+</head>
+<body>
+<!-- Background video (user-supplied) -->
+<div class="video-bg" aria-hidden="true">
+  <video id="bgvid" autoplay loop muted playsinline>
+    <source src="Soft Pastel Gradient Background for Dreamy Video Projects.mp4" type="video/mp4" />
+  </video>
+</div>
+<div class="overlay" aria-hidden="true"></div>
+
+<div id="page">
+  <div class="container">
+    <div class="card">
+      <h1>XS Prompt Tool</h1>
+      <div class="sub">Fresh Build v0.2 — Video background + Ethnicity + DATA-driven menus + smart conflicts.</div>
+
+      <div class="grid">
+        <!-- Gender as pills (unchanged size, helper text removed) -->
+        <div class="field">
+          <div class="label">Gender</div>
+          <div class="pill-group" id="genderGroup" role="group" aria-label="Gender selection">
+            <button class="pill" data-group="gender" data-value="Female" aria-pressed="false">Female</button>
+            <button class="pill" data-group="gender" data-value="Male" aria-pressed="false">Male</button>
+          </div>
+        </div>
+
+        <!-- Age numeric input -->
+        <div class="field">
+          <label class="label" for="ageInput">Age</label>
+          <input id="ageInput" class="input" type="number" min="18" max="120" step="1" placeholder="Type an age (e.g., 19)" />
+          <div class="note">Output will translate to “<em>X years old</em>”.</div>
+        </div>
+
+        <!-- Ethnicity dropdown -->
+        <div class="field">
+          <div class="label">Ethnicity</div>
+          <div class="menu-wrap">
+            <button class="menu-button" data-menu="Ethnicity" aria-haspopup="true" aria-expanded="false">Open Ethnicity Menu ▾</button>
+            <div class="menu hidden" data-menu-panel="Ethnicity" role="menu" aria-label="Ethnicity menu"></div>
+          </div>
+        </div>
+
+        <!-- Categories heading -->
+        <div class="field">
+          <div class="label">Categories</div>
+          <div class="note">Face and Hair menus shown below (full category grid pending your next design pass).</div>
+        </div>
+
+        <!-- Face dropdown (Expression, Features, Eyes with Eye Colour) -->
+        <div class="field">
+          <div class="menu-wrap">
+            <button class="menu-button" data-menu="Face" aria-haspopup="true" aria-expanded="false">Open Face Menu ▾</button>
+            <div class="menu hidden" data-menu-panel="Face" role="menu" aria-label="Face menu"></div>
+          </div>
+        </div>
+
+        <!-- Hair dropdown (Style, Length, Colour + Highlights) -->
+        <div class="field">
+          <div class="menu-wrap">
+            <button class="menu-button" data-menu="Hair" aria-haspopup="true" aria-expanded="false">Open Hair Menu ▾</button>
+            <div class="menu hidden" data-menu-panel="Hair" role="menu" aria-label="Hair menu"></div>
+          </div>
+        </div>
+
+        <!-- Selected summary -->
+        <div class="field">
+          <div class="label">Current Selection</div>
+          <div class="summary">
+            <div id="summaryText">Nothing selected yet.</div>
+            <div id="chips" class="chips"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Root -->
+<div id="modalRoot" style="display:none"></div>
+
+<script>
+  // =========================
+  // Custom Expansion System v1
+  // =========================
+  const DATA = {
+    "Ethnicity": {
+      "Origin": [
+        "European","White","Black","Latina","Spanish","Czech","Russian","African","Arabic","Asian",
+        "Brazilian","British","Chinese","Dutch","Egyptian","Ethiopian","Filipina","French","German",
+        "Greek","Hungarian","Indian","Indonesian","Irish","Italian","Japanese","Jewish"
+      ]
+    },
+    "Face": {
+      "Expression": ["Scared","Ahegao","Seductive smirk","Open mouth","Serious","Closed eyes","Angry","Crying","Cute","Flirty","Happy","Sad"],
+      "Features": ["Thick eyebrows","Long eyelashes","Busty lips","Big eyes","Sharp nose","Small nose","Wide jaw","Narrow jaw","Beauty","Cute","Cheekbones","Jawline","Dimples","Freckles","Makeup"],
+      "Eyes": {
+        "Eye Colour": ["Brown","Amber","Black","Blue","Grey","Green","Deep blue","Purple","Light blue"]
+      }
+    },
+    "Hair": {
+      "Style": ["Bangs","Curly","Messy","Slicked","Bobcut","Braided","Fluffy","Hair bun","Straight","Pixie"],
+      "Length": ["Short","Shoulder Length","Medium","Long","Waist Length"],
+      "Colour": {
+        "Base": ["Brunette","Blonde","Grey","Black","White","Silver","Red","Blue","Green","Ginger","Purple","Pink"],
+        "Highlights": ["Brunette","Blonde","Grey","Black","White","Silver","Red","Blue","Green","Ginger","Purple","Pink"]
+      }
+    }
+  };
+
+  // =========================
+  // Smart Conflict Rules
+  // =========================
+  const CONFLICT_RULES = {
+    "Expression": [
+      ["Happy","Sad"],
+      ["Serious","Flirty"],
+      ["Angry","Happy"],
+      ["Crying","Happy"]
+    ],
+    "Length": [
+      ["Short","Long"],
+      ["Medium","Waist Length"]
+    ]
+  };
+
+  const state = {
+    gender: null,
+    age: null,
+    selections: {}
+  };
+
+  function ensureCategory(cat){
+    if(!state.selections[cat]) state.selections[cat] = new Map();
+    return state.selections[cat];
+  }
+  function toggleValue(cat, sub, val){
+    const bucket = ensureCategory(cat);
+    if(!bucket.has(sub)) bucket.set(sub, new Set());
+    const set = bucket.get(sub);
+    if(set.has(val)) set.delete(val); else set.add(val);
+  }
+  function chosenValuesFlat(){
+    const set = new Set();
+    for(const [cat, map] of Object.entries(state.selections)){
+      if(map instanceof Map){
+        for(const [sub, subSet] of map.entries()){
+          subSet.forEach(v => set.add(v));
+        }
+      }
+    }
+    return set;
+  }
+  function detectConflicts(catKey, subKey, newVal){
+    const rules = CONFLICT_RULES[subKey] || CONFLICT_RULES[catKey] || [];
+    const chosen = chosenValuesFlat();
+    const clashes = [];
+    for(const [a,b] of rules){
+      if(newVal === a && chosen.has(b)) clashes.push(b);
+      if(newVal === b && chosen.has(a)) clashes.push(a);
+    }
+    return [...new Set(clashes)];
+  }
+
+  function buildMenu(panel, catKey, catData){
+    panel.replaceChildren();
+    if(Array.isArray(catData)){
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.dataset.category = catKey;
+      row.dataset.submenu = catKey;
+      catData.forEach(opt => row.appendChild(makeOption(catKey, catKey, opt)));
+      panel.appendChild(row);
+    }else{
+      Object.entries(catData).forEach(([subKey, value]) => {
+        const section = document.createElement('details');
+        section.className = 'section';
+        const summary = document.createElement('summary');
+        summary.textContent = subKey;
+        section.appendChild(summary);
+        const row = document.createElement('div');
+        row.className = 'option-row';
+        row.dataset.category = catKey;
+        row.dataset.submenu = subKey;
+
+        if(Array.isArray(value)){
+          value.forEach(opt => row.appendChild(makeOption(catKey, subKey, opt)));
+        }else if(typeof value === 'object' && value){
+          Object.entries(value).forEach(([nestedKey, nestedVals]) => {
+            const nestedSection = document.createElement('details');
+            nestedSection.className = 'section';
+            const nestedSummary = document.createElement('summary');
+            nestedSummary.textContent = nestedKey;
+            nestedSection.appendChild(nestedSummary);
+
+            const nestedRow = document.createElement('div');
+            nestedRow.className = 'option-row';
+            nestedRow.dataset.category = catKey;
+            nestedRow.dataset.submenu = nestedKey;
+            (nestedVals || []).forEach(opt => nestedRow.appendChild(makeOption(catKey, nestedKey, opt)));
+
+            nestedSection.appendChild(nestedRow);
+            section.appendChild(nestedSection);
+          });
+        }
+        section.appendChild(row);
+        panel.appendChild(section);
+      });
+    }
+  }
+  function makeOption(catKey, subKey, label){
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = label;
+    btn.dataset.category = catKey;
+    btn.dataset.submenu = subKey;
+    btn.dataset.value = label;
+    btn.addEventListener('click', () => onOptionClick(btn));
+    return btn;
+  }
+  function updateActiveStates(){
+    document.querySelectorAll('.option').forEach(opt => {
+      const cat = opt.dataset.category;
+      const sub = opt.dataset.submenu;
+      const val = opt.dataset.value;
+      const map = state.selections[cat];
+      let active = false;
+      if(map instanceof Map && map.has(sub)){
+        active = map.get(sub).has(val);
+      }
+      opt.classList.toggle('active', active);
+    });
+    document.querySelectorAll('.pill[data-group="gender"]').forEach(p => {
+      const active = state.gender === p.dataset.value;
+      p.classList.toggle('active', active);
+      p.setAttribute('aria-pressed', String(active));
+    });
+  }
+  function rebuildSummary(){
+    const chips = document.getElementById('chips');
+    const summaryText = document.getElementById('summaryText');
+    chips.replaceChildren();
+    const parts = [];
+    if(state.gender) parts.push(state.gender);
+    if(Number.isFinite(state.age)) parts.push(`${state.age} years old`);
+
+    for(const [cat, map] of Object.entries(state.selections)){
+      if(!(map instanceof Map)) continue;
+      for(const [sub, set] of map.entries()){
+        if(!set.size) continue;
+        parts.push(`${(cat + (sub !== cat ? ' ' + sub : '')).toLowerCase()}: ${Array.from(set).join(', ')}`);
+        set.forEach(v => {
+          const chip = document.createElement('span');
+          chip.className = 'chip'; chip.textContent = v;
+          chips.appendChild(chip);
+        });
+      }
+    }
+    summaryText.textContent = parts.length ? parts.join(' • ') : 'Nothing selected yet.';
+  }
+
+  function onOptionClick(btn){
+    const cat = btn.dataset.category;
+    const sub = btn.dataset.submenu;
+    const val = btn.dataset.value;
+
+    const willAdd = !((state.selections[cat] instanceof Map) && state.selections[cat].get(sub)?.has(val));
+    const conflicts = willAdd ? detectConflicts(cat, sub, val) : [];
+
+    if(willAdd && conflicts.length){
+      showConflictModal(val, conflicts, () => {
+        toggleValue(cat, sub, val);
+        updateActiveStates();
+        rebuildSummary();
+      });
+    }else{
+      toggleValue(cat, sub, val);
+      updateActiveStates();
+      rebuildSummary();
+    }
+  }
+  function showConflictModal(value, conflictingList, onConfirm){
+    const modalRoot = document.getElementById('modalRoot');
+    const page = document.getElementById('page');
+    page.classList.add('blurred');
+    modalRoot.style.display = 'block';
+    modalRoot.innerHTML = `
+      <div class="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <h3>Potential Prompt Clash</h3>
+          <p>Are you sure you wish to select ‘<strong>${value}</strong>’? This prompt may clash with some of your previous selections: ‘<strong>${conflictingList.join("’, ‘")}</strong>’.</p>
+          <div class="actions">
+            <button class="btn ok" id="confirmAdd">Yes, add anyway! 😁</button>
+            <button class="btn cancel" id="cancelAdd">No! 😲 – I didn’t mean to do that 😅</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('confirmAdd').onclick = () => { closeModal(); onConfirm && onConfirm(); };
+    document.getElementById('cancelAdd').onclick = () => { closeModal(); };
+  }
+  function closeModal(){
+    const modalRoot = document.getElementById('modalRoot');
+    const page = document.getElementById('page');
+    page.classList.remove('blurred');
+    modalRoot.style.display = 'none';
+    modalRoot.innerHTML = '';
+  }
+
+  function initMenus(){
+    document.querySelectorAll('.menu-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.menu;
+        const panel = document.querySelector(`.menu[data-menu-panel="${key}"]`);
+        if(!panel) return;
+        panel.classList.toggle('hidden');
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+      });
+    });
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.menu').forEach(menu => {
+        const btn = document.querySelector(`.menu-button[data-menu="${menu.dataset.menuPanel}"]`);
+        if(menu.classList.contains('hidden')) return;
+        const within = e.target.closest('.menu') || e.target.closest('.menu-button');
+        if(!within){
+          menu.classList.add('hidden');
+          if(btn) btn.setAttribute('aria-expanded','false');
+        }
+      });
+    });
+  }
+  function initGender(){
+    document.getElementById('genderGroup').addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill[data-group="gender"]'); if(!btn) return;
+      const val = btn.dataset.value;
+      state.gender = (state.gender === val) ? null : val;
+      updateActiveStates(); rebuildSummary();
+    });
+  }
+  function initAge(){
+    const input = document.getElementById('ageInput');
+    input.addEventListener('input', () => {
+      const v = parseInt(input.value, 10);
+      state.age = Number.isFinite(v) ? Math.max(18, Math.min(120, v)) : null;
+      rebuildSummary();
+    });
+  }
+  function hydrateMenus(){
+    buildMenu(document.querySelector('.menu[data-menu-panel="Face"]'), 'Face', DATA['Face']);
+    buildMenu(document.querySelector('.menu[data-menu-panel="Hair"]'), 'Hair', DATA['Hair']);
+    buildMenu(document.querySelector('.menu[data-menu-panel="Ethnicity"]'), 'Ethnicity', DATA['Ethnicity']);
+  }
+
+  initMenus();
+  initGender();
+  initAge();
+  hydrateMenus();
+  updateActiveStates();
+  rebuildSummary();
+
+  // Checklist snapshot embedded:
+  // - Video background integrated.
+  // - Gender helper note removed.
+  // - Ethnicity dropdown (multi-select) added.
+  // - Face vs Hair structure split as requested.
+  // - DATA-driven menus + smart conflicts.
+</script>
+</body>
+</html>
