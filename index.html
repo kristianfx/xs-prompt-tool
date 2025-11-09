@@ -1,532 +1,722 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XS Prompt Tool — Fresh Build v0.2</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>XS Prompt Builder – v0.5 (Cinematic Glass)</title>
 <style>
   :root{
-    --glass:rgba(255,255,255,0.10);
-    --glass-2:rgba(255,255,255,0.06);
-    --text:#eaf0f7;
-    --muted:#a7b5c8;
-    --accent:#4aa3ff;
-    --accent-2:#7ac7ff;
-    --ring: rgba(74,163,255,0.35);
-    --shadow: 0 14px 40px rgba(0,0,0,0.45);
-    --radius: 16px;
-    --radius-pill: 999px;
+    --bg1: #06080e;
+    --bg2: #0a0f1c;
+    --text: #f4f7ff;
+    --muted: #b8c1d9;
+    --stroke: rgba(255,255,255,.12);
+    --panel: rgba(255,255,255,.10);
+    --panel-strong: rgba(255,255,255,.16);
+    --chip: rgba(255,255,255,.14);
+    --accent: #7aa2ff; /* will be overridden dynamically from video */
+    --accent-2: #74f0ff;
+    --danger: #ff5e7a;
+    --ok: #30e6a8;
   }
   *{box-sizing:border-box}
-  html,body{
-    height:100%; margin:0; color:var(--text);
-    font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    overflow-x:hidden;
-  }
-
-  /* Background video layer */
-  .video-bg{
-    position:fixed; inset:0; z-index:-2; overflow:hidden;
-  }
-  .video-bg video{
-    position:absolute; top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    min-width:100%; min-height:100%;
-    width:auto; height:auto; object-fit:cover;
-  }
-  /* Overlay to preserve contrast */
-  .overlay{
-    position:fixed; inset:0; z-index:-1;
-    background:
-      radial-gradient(60% 60% at 20% 0%, rgba(10,16,24,0.55), transparent 60%),
-      linear-gradient(180deg, rgba(6,10,16,0.55), rgba(6,10,16,0.75));
-    pointer-events:none;
-  }
-
-  .container{ max-width:1100px; margin:44px auto; padding:24px; }
-  .card{
-    background:var(--glass-2);
-    backdrop-filter: blur(18px) saturate(130%);
-    border:1px solid rgba(255,255,255,0.10);
-    border-radius:var(--radius);
-    box-shadow: var(--shadow);
-    padding:22px;
-  }
-  h1{ margin:0 0 6px; font-size:28px }
-  .sub{ color:var(--muted); margin-bottom:20px }
-
-  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
-  @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
-
-  .field{ display:flex; flex-direction:column; gap:8px; }
-  .label{ color:var(--muted); font-size:13px; letter-spacing:.2px; }
-
-  .pill-group{ display:flex; gap:10px; flex-wrap:wrap; }
-  .pill{
-    padding:8px 14px; border-radius:var(--radius-pill);
-    border:1px solid rgba(255,255,255,0.14);
-    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
-    color:var(--text); cursor:pointer; user-select:none;
-    transition: all .2s ease; box-shadow: inset 0 0 0 0px var(--ring);
-  }
-  .pill:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,0.2); }
-  .pill.active{
-    background: linear-gradient(180deg, rgba(74,163,255,0.35), rgba(74,163,255,0.12));
-    border-color: rgba(122,199,255,0.6);
-    box-shadow: inset 0 0 0 2px var(--ring);
-  }
-
-  .input{
-    appearance:none; width:100%; padding:12px 14px;
-    border-radius:12px; border:1px solid rgba(255,255,255,0.14);
-    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
-    color:var(--text); outline:none;
-    transition:border-color .2s ease, box-shadow .2s ease;
-  }
-  .input:focus{ border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(122,199,255,0.22); }
-
-  /* Dropdown menu */
-  .menu-wrap{ position:relative; display:inline-block; }
-  .menu-button{
-    padding:10px 14px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,0.14);
-    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, Segoe UI, Roboto, Helvetica, Arial;
     color:var(--text);
-    cursor:pointer;
+    background: radial-gradient(1200px 800px at 10% -10%, #0e1530 0%, rgba(14,21,48,0) 60%),
+               radial-gradient(900px 600px at 110% 10%, #07122a 0%, rgba(7,18,42,0) 55%),
+               linear-gradient(180deg, var(--bg1), var(--bg2));
   }
-  .menu{
-    position:absolute; top:44px; left:0;
-    min-width:280px; z-index:20;
-    border-radius:14px;
-    background: rgba(12,16,22,0.92);
-    backdrop-filter: blur(14px) saturate(120%);
-    border:1px solid rgba(255,255,255,0.12);
-    box-shadow: var(--shadow);
-    padding:8px;
-  }
-  .menu.hidden{ display:none; }
-  .menu .section{
-    border-radius:10px; overflow:hidden; margin-bottom:6px;
-    border:1px solid rgba(255,255,255,0.08);
-  }
-  .menu .section > summary{
-    list-style:none; cursor:pointer; padding:10px 12px;
-    background: rgba(255,255,255,0.04); font-weight:600;
-  }
-  .menu .section[open] > summary{ background: rgba(255,255,255,0.07); }
-  .option-row{ display:flex; flex-wrap:wrap; gap:8px; padding:10px 12px 12px; }
-  .option{
-    padding:6px 10px; font-size:13px; border-radius:10px;
-    border:1px solid rgba(255,255,255,0.14);
-    cursor:pointer; user-select:none; background: rgba(255,255,255,0.06);
-    transition:all .15s ease;
-  }
-  .option:hover{ border-color: rgba(255,255,255,0.22); transform: translateY(-1px); }
-  .option.active{ background: rgba(74,163,255,0.28); border-color: rgba(122,199,255,0.6); }
-
-  .summary{ margin-top:18px; padding:14px; border-radius:12px;
-    border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); }
-  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
-  .chip{
-    padding:6px 10px; font-size:12px; border-radius:999px;
-    background: rgba(74,163,255,0.22); border:1px solid rgba(122,199,255,0.5);
+  a{color:inherit}
+  /* Background video */
+  .bg{position:fixed; inset:0; z-index:-3; overflow:hidden}
+  .bg video{position:absolute; min-width:100%; min-height:100%; width:auto; height:auto;
+            top:50%; left:50%; transform:translate(-50%,-50%); object-fit:cover}
+  /* Clear glass overlay with slight blur */
+  .glass-overlay{position:fixed; inset:0; z-index:-2; pointer-events:none;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(4px) saturate(140%);
   }
 
-  /* Modal + blur */
-  .blurred{ filter: blur(4px); pointer-events: none; user-select:none; }
-  .modal-backdrop{
-    position: fixed; inset:0; background: rgba(10,14,17,0.45);
-    backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:center; z-index:100;
-  }
-  .modal{
-    width:min(560px, 92vw);
-    background: rgba(20,26,34,0.86);
-    backdrop-filter: blur(16px) saturate(140%);
-    border:1px solid rgba(255,255,255,0.12);
-    border-radius:20px; padding:20px; box-shadow: var(--shadow); text-align:center;
-  }
-  .modal h3{ margin:0 0 6px; font-size:20px }
-  .modal p{ color:var(--muted); margin:0 0 16px }
-  .modal .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap }
-  .btn{
-    padding:10px 14px; border-radius:12px;
-    border:1px solid rgba(255,255,255,0.14);
-    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
-    color:var(--text); cursor:pointer;
-  }
-  .btn.ok{ border-color: rgba(53,213,143,0.6); background: rgba(53,213,143,0.18); }
-  .btn.cancel{ border-color: rgba(255,93,115,0.6); background: rgba(255,93,115,0.18); }
+  .wrap{max-width:1200px; margin:20px auto; padding:0 14px}
+  header{position:sticky; top:0; z-index:25; backdrop-filter:saturate(140%) blur(10px)}
+  .hcard{background:var(--panel-strong); border:1px solid var(--stroke); border-radius:16px; padding:12px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .title{font-weight:800; font-size:22px}
+  .subtitle{font-size:12px; color:var(--muted)}
 
-  .note{ font-size:12px; color:var(--muted) }
+  .card{background:var(--panel); border:1px solid var(--stroke); border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); backdrop-filter: blur(12px) saturate(140%)}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:900px){ .row{grid-template-columns:1fr} }
+
+  label.block{display:block; font-size:13px; margin:8px 4px 6px; color:#dfe7ff}
+  input[type="text"], input[type="number"], select, textarea, button{
+    width:100%; border-radius:12px; border:1px solid var(--stroke);
+    padding:12px 14px; outline:none; color:var(--text);
+    background: rgba(10,16,28,.6);
+    transition: border-color .2s, box-shadow .2s, transform .05s;
+    box-shadow: 0 1px 0 rgba(255,255,255,.15) inset;
+  }
+  input:focus, select:focus, textarea:focus{
+    border-color: color-mix(in srgb, var(--accent), white 15%);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent), transparent 75%);
+  }
+  textarea{min-height:130px; resize:vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+
+  .section-title{font-weight:800; letter-spacing:.3px; margin:8px 4px 6px}
+  .tiny{font-size:12px; color:var(--muted)}
+
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:999px;
+        background:rgba(10,16,28,.6); border:1px solid var(--stroke); cursor:pointer; user-select:none}
+  .pill.active{color:#01060e; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border:0}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px}
+  .chip{background:var(--chip); border:1px solid var(--stroke); border-radius:999px; padding:6px 10px; font-size:12px; display:inline-flex; align-items:center; gap:8px}
+  .chip .x{cursor:pointer; opacity:.8}
+
+  .btn{cursor:pointer; font-weight:700; letter-spacing:.2px}
+  .btn-primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#03101f; border:0}
+  .btn-ghost{background:rgba(10,16,28,.55); border:1px solid var(--stroke)}
+  .btn-danger{background:linear-gradient(90deg, #ff6e83, #ff9aab); border:0; color:#210a10}
+  .btn-sm{padding:8px 12px; border-radius:12px}
+  .btn-lg{padding:12px 16px; border-radius:14px}
+  .actions{display:flex; flex-wrap:wrap; gap:10px}
+
+  /* Category grid + flyouts */
+  .cat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+  @media (max-width:1200px){ .cat-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:820px){ .cat-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:520px){ .cat-grid{grid-template-columns:1fr} }
+  .cat{position:relative}
+  .fly{position:absolute; left:0; top:calc(100% + 8px);
+       min-width:280px; max-width:440px; max-height:60vh; overflow:auto;
+       background:rgba(10,16,28,.8);
+       border:1px solid var(--stroke); border-radius:14px;
+       box-shadow:0 20px 60px rgba(0,0,0,.45);
+       display:none; padding:12px; z-index:9999; backdrop-filter: blur(12px) saturate(140%)}
+  .cat.open .fly{display:block}
+  .fly h5{margin:6px 6px 8px; font-size:12px; color:#dbe3ff}
+  .fly .opt-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
+  .opt{background:rgba(255,255,255,.06); border:1px solid var(--stroke); border-radius:12px; padding:9px 11px; font-size:12px; cursor:pointer}
+  .opt.active{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#03101f; border:0}
+
+  .divider{height:1px; background:rgba(255,255,255,.12); margin:12px 0}
+  .note-box{font-size:12px; background:rgba(10,16,28,.55); border:1px dashed var(--stroke); padding:12px; border-radius:12px}
+
+  /* Modal */
+  body.modal-open.global-blur #app{filter: blur(6px)}
+  body.modal-open.panel-blur #main-panel{filter: blur(8px)}
+  .modal{position:fixed; inset:0; display:none; place-items:center; z-index:10000}
+  body.modal-open .modal{display:grid}
+  .modal .overlay{position:absolute; inset:0; background:rgba(0,0,0,.25); backdrop-filter: blur(8px)}
+  .modal .dialog{position:relative; width:min(580px, calc(100% - 32px)); background:rgba(10,16,28,.8); border:1px solid var(--stroke); border-radius:16px; padding:18px; box-shadow:0 30px 70px rgba(0,0,0,.4); backdrop-filter: blur(14px)}
+  .dialog h3{margin:0 0 6px 0; font-size:18px}
+  .dialog p{margin:0 0 14px 0; color:var(--muted)}
+  .dialog .choices{display:flex; gap:10px; justify-content:flex-end}
+
+  /* Build bar */
+  .buildbar{position:sticky; bottom:8px; display:flex; gap:10px; align-items:center; background:rgba(10,16,28,.6); padding:8px; border:1px solid var(--stroke); border-radius:14px; backdrop-filter: blur(12px); box-shadow:0 10px 30px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
-<!-- Background video (user-supplied) -->
-<div class="video-bg" aria-hidden="true">
-  <video id="bgvid" autoplay loop muted playsinline>
-    <source src="Soft Pastel Gradient Background for Dreamy Video Projects.mp4" type="video/mp4" />
-  </video>
+<!-- Background -->
+<div class="bg">
+  <video id="bgVideo" autoplay muted loop playsinline src="165160-832090880.mp4"></video>
 </div>
-<div class="overlay" aria-hidden="true"></div>
+<div class="glass-overlay"></div>
 
-<div id="page">
-  <div class="container">
-    <div class="card">
-      <h1>XS Prompt Tool</h1>
-      <div class="sub">Fresh Build v0.2 — Video background + Ethnicity + DATA-driven menus + smart conflicts.</div>
+<div id="app">
+  <header>
+    <div class="wrap">
+      <div class="hcard">
+        <div class="title">XS Prompt Builder <span class="subtitle">v0.5 • cinematic glass • presets • bracketed output</span></div>
+        <div class="subtitle">Video-toned UI, scroll-contained menus, smart clashes, Character Templates + My Characters.</div>
+      </div>
+    </div>
+  </header>
 
-      <div class="grid">
-        <!-- Gender as pills (unchanged size, helper text removed) -->
-        <div class="field">
-          <div class="label">Gender</div>
-          <div class="pill-group" id="genderGroup" role="group" aria-label="Gender selection">
-            <button class="pill" data-group="gender" data-value="Female" aria-pressed="false">Female</button>
-            <button class="pill" data-group="gender" data-value="Male" aria-pressed="false">Male</button>
+  <div class="wrap" style="margin-top:12px">
+    <!-- Top controls -->
+    <div class="actions" style="justify-content:space-between; margin-bottom:10px">
+      <div class="actions">
+        <span class="pill active" id="btnGlobal">Blur Whole App</span>
+        <span class="pill" id="btnPanel">Blur Panel Only</span>
+      </div>
+      <div class="actions">
+        <label class="block" style="margin:0 8px 0 0; align-self:center">Character Templates</label>
+        <select id="templateSelect" style="min-width:240px"></select>
+        <button id="btnNewTemplate" class="btn btn-ghost btn-sm" title="Save current as a new template">＋ Create New</button>
+      </div>
+    </div>
+
+    <!-- Main panel -->
+    <div id="main-panel" class="card">
+      <div class="row">
+        <div>
+          <div class="section-title">Gender</div>
+          <div class="actions" id="genderPills"></div>
+          <div class="section-title" style="margin-top:10px">Age</div>
+          <input id="ageInput" type="number" min="18" step="1" placeholder="Type age (e.g., 18, 19, 23)" />
+          <div class="tiny">Rendered as “X years old” in the output.</div>
+        </div>
+        <div>
+          <div class="section-title">Ethnicity</div>
+          <div class="cat">
+            <div class="pill" data-open="ethnicity">Open Ethnicity ▾</div>
+            <div class="fly" id="fly-ethnicity">
+              <div class="opt-grid" id="ethnicityOpts"></div>
+            </div>
           </div>
-        </div>
-
-        <!-- Age numeric input -->
-        <div class="field">
-          <label class="label" for="ageInput">Age</label>
-          <input id="ageInput" class="input" type="number" min="18" max="120" step="1" placeholder="Type an age (e.g., 19)" />
-          <div class="note">Output will translate to “<em>X years old</em>”.</div>
-        </div>
-
-        <!-- Ethnicity dropdown -->
-        <div class="field">
-          <div class="label">Ethnicity</div>
-          <div class="menu-wrap">
-            <button class="menu-button" data-menu="Ethnicity" aria-haspopup="true" aria-expanded="false">Open Ethnicity Menu ▾</button>
-            <div class="menu hidden" data-menu-panel="Ethnicity" role="menu" aria-label="Ethnicity menu"></div>
-          </div>
-        </div>
-
-        <!-- Categories heading -->
-        <div class="field">
-          <div class="label">Categories</div>
-          <div class="note">Face and Hair menus shown below (full category grid pending your next design pass).</div>
-        </div>
-
-        <!-- Face dropdown (Expression, Features, Eyes with Eye Colour) -->
-        <div class="field">
-          <div class="menu-wrap">
-            <button class="menu-button" data-menu="Face" aria-haspopup="true" aria-expanded="false">Open Face Menu ▾</button>
-            <div class="menu hidden" data-menu-panel="Face" role="menu" aria-label="Face menu"></div>
-          </div>
-        </div>
-
-        <!-- Hair dropdown (Style, Length, Colour + Highlights) -->
-        <div class="field">
-          <div class="menu-wrap">
-            <button class="menu-button" data-menu="Hair" aria-haspopup="true" aria-expanded="false">Open Hair Menu ▾</button>
-            <div class="menu hidden" data-menu-panel="Hair" role="menu" aria-label="Hair menu"></div>
-          </div>
-        </div>
-
-        <!-- Selected summary -->
-        <div class="field">
-          <div class="label">Current Selection</div>
-          <div class="summary">
-            <div id="summaryText">Nothing selected yet.</div>
-            <div id="chips" class="chips"></div>
-          </div>
+          <div class="chips" id="ethnicityChips"></div>
         </div>
       </div>
 
+      <div class="divider"></div>
+
+      <!-- Categories grid -->
+      <div class="section-title">Categories</div>
+      <div class="cat-grid" id="catGrid"></div>
+
+      <div style="height:8px"></div>
+      <div class="buildbar">
+        <button id="btnBuild" class="btn btn-primary btn-lg" style="flex:1">Build Prompt</button>
+        <button id="btnReset" class="btn btn-danger btn-lg">Reset</button>
+        <span class="tiny">⌘/Ctrl + Enter</span>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="row">
+      <div class="card">
+        <div class="section-title">POSITIVE PROMPT (OUTPUT)</div>
+        <textarea id="outPos" placeholder="Built positive prompt appears here..."></textarea>
+        <div class="actions" style="margin-top:10px">
+          <button id="copyPos" class="btn btn-ghost btn-sm">Copy</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">NEGATIVE PROMPT (OUTPUT)</div>
+        <textarea id="outNeg" placeholder="Built negative prompt appears here..."></textarea>
+        <div class="actions" style="margin-top:10px">
+          <button id="copyNeg" class="btn btn-ghost btn-sm">Copy</button>
+          <button id="loadNegStd" class="btn btn-ghost btn-sm" title="Load a sensible default negative list">Load Default</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="section-title">ASPECT RATIO GUIDE</div>
+          <div class="note-box">• <b>7:4</b> wide rooftop action • <b>9:7</b> medium shots • <b>13:19</b> tall full‑body • <b>12:5</b> cinematic wide • <b>3:2</b> classic photo • <b>21:9</b> ultra‑wide cinema • <b>4:5</b> portrait • <b>1:1</b> square</div>
+        </div>
+        <div>
+          <div class="section-title">SAMPLER & STEPS (SUGGESTED)</div>
+          <div class="note-box">• <b>Sampler:</b> DPM++ 2M Karras • <b>Steps:</b> 30–40 • <b>CFG:</b> 6–8 • <b>Seed:</b> fixed • <b>Hi‑res:</b> Latent 0.4–0.6 • <b>Sharpness:</b> add (clarity:1.1) subtly</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Clash modal -->
+<div class="modal" id="clashModal" aria-modal="true" role="dialog" aria-labelledby="clashTitle">
+  <div class="overlay" id="modalOverlay"></div>
+  <div class="dialog">
+    <h3 id="clashTitle">Possible Clash</h3>
+    <p id="clashText">Are you sure you wish to select "X"? This may clash with: "Y".</p>
+    <div class="choices">
+      <button id="denyClash" class="btn btn-ghost btn-sm">No! 😲 – I didn't mean to 😅</button>
+      <button id="acceptClash" class="btn btn-primary btn-sm">Yes, add anyway! 😁</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Root -->
-<div id="modalRoot" style="display:none"></div>
+<!-- Template modal -->
+<div class="modal" id="templateModal" aria-modal="true" role="dialog" aria-labelledby="tmplTitle" style="display:none">
+  <div class="overlay" id="tmplOverlay"></div>
+  <div class="dialog">
+    <h3 id="tmplTitle">Save New Character</h3>
+    <p class="tiny">This saves your current selections as a template under <b>My Characters</b>.</p>
+    <label class="block">Character Name</label>
+    <input id="tmplName" type="text" placeholder="e.g., Cyber Agent Zara"/>
+    <div class="choices" style="margin-top:12px">
+      <button id="cancelTmpl" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="saveTmpl" class="btn btn-primary btn-sm">Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
-  // =========================
-  // Custom Expansion System v1
-  // =========================
-  const DATA = {
-    "Ethnicity": {
-      "Origin": [
-        "European","White","Black","Latina","Spanish","Czech","Russian","African","Arabic","Asian",
-        "Brazilian","British","Chinese","Dutch","Egyptian","Ethiopian","Filipina","French","German",
-        "Greek","Hungarian","Indian","Indonesian","Irish","Italian","Japanese","Jewish"
-      ]
+/*****************
+ * DATA CATALOGS *
+ *****************/
+const GENDER = ["Female","Male"];
+const ETHNICITIES = ["European","White","Black","Latina","Spanish","Czech","Russian","African","Arabic","Asian","Brazilian","British","Chinese","Dutch","Egyptian","Ethiopian","Filipina","French","German","Greek","Hungarian","Indian","Indonesian","Irish","Italian","Japanese","Jewish"];
+
+const CATALOG = {
+  "Face": {
+    "Face Shape": ["Heart-shaped","Oval","Round","Square","Diamond"],
+    "Skin": ["Tanned smooth skin","Olive smooth skin","Porcelain smooth skin","Freckled","Warm undertone","Cool undertone"],
+    "Expression": ["Calm","Serene","Relaxed","Neutral","Smile","Big smile","Grin","Laughing","Focused","Determined","Confident","Curious","Surprised","Shocked","Angry","Furious","Frown","Sad","Melancholic","Crying","Sultry","Playful","Winking","Eyes open","Eyes closed","Yelling","Whispering"],
+    "Eyes": {"Eye Colour": ["Brown","Amber","Black","Blue","Grey","Green","Deep blue","Purple","Light blue"]}
+  },
+  "Hair": {
+    "Style": ["Bangs","Curly","Messy","Slicked","Bobcut","Braided","Fluffy","Hair bun","Straight","Pixie"],
+    "Length": ["Short","Shoulder length","Medium","Long","Waist length"],
+    "Colour": {"Base": ["Brunette","Blonde","Grey","Black","White","Silver","Red","Blue","Green","Ginger","Purple","Pink"],
+               "Highlights": ["Brunette","Blonde","Grey","Black","White","Silver","Red","Blue","Green","Ginger","Purple","Pink"]}
+  },
+  "Body": {
+    "Build": ["Slim","Athletic","Curvy","Average","Toned","Muscular","Petite","Tall"],
+    "Skin Detail": ["Blemish-free","Natural texture","Glossy finish","Matte finish"]
+  },
+  "Attire": {
+    "Clothing": ["Bikini","Blouse","Shirt","T-shirt","Crop top","Hoodie","Sweater","Shorts","Jeans","Skirt","Dress","Gown","Jacket","Coat","Sweatpants","Leggings"],
+    "Underwear": {
+      "Bra": ["Bra","Push-up bra","Sports bra","Lace bra","Sheer bra","Underwired","Strapless"],
+      "Bottoms": ["Panties","Thong","G-string","Bikini bottoms","Boyshorts","Stockings","Nylon pantyhose","Corset"],
+      "State": ["buttoned","unbuttoned","unzipped","décolleté","sheer","lace"]
     },
-    "Face": {
-      "Expression": ["Scared","Ahegao","Seductive smirk","Open mouth","Serious","Closed eyes","Angry","Crying","Cute","Flirty","Happy","Sad"],
-      "Features": ["Thick eyebrows","Long eyelashes","Busty lips","Big eyes","Sharp nose","Small nose","Wide jaw","Narrow jaw","Beauty","Cute","Cheekbones","Jawline","Dimples","Freckles","Makeup"],
-      "Eyes": {
-        "Eye Colour": ["Brown","Amber","Black","Blue","Grey","Green","Deep blue","Purple","Light blue"]
-      }
-    },
-    "Hair": {
-      "Style": ["Bangs","Curly","Messy","Slicked","Bobcut","Braided","Fluffy","Hair bun","Straight","Pixie"],
-      "Length": ["Short","Shoulder Length","Medium","Long","Waist Length"],
-      "Colour": {
-        "Base": ["Brunette","Blonde","Grey","Black","White","Silver","Red","Blue","Green","Ginger","Purple","Pink"],
-        "Highlights": ["Brunette","Blonde","Grey","Black","White","Silver","Red","Blue","Green","Ginger","Purple","Pink"]
-      }
-    }
-  };
-
-  // =========================
-  // Smart Conflict Rules
-  // =========================
-  const CONFLICT_RULES = {
-    "Expression": [
-      ["Happy","Sad"],
-      ["Serious","Flirty"],
-      ["Angry","Happy"],
-      ["Crying","Happy"]
-    ],
-    "Length": [
-      ["Short","Long"],
-      ["Medium","Waist Length"]
-    ]
-  };
-
-  const state = {
-    gender: null,
-    age: null,
-    selections: {}
-  };
-
-  function ensureCategory(cat){
-    if(!state.selections[cat]) state.selections[cat] = new Map();
-    return state.selections[cat];
+    "Feet": ["Socks","Ankle socks","Barefoot","Stiletto heels","Sandals","Crocs","Boots","Sneakers"],
+    "Accessories": ["Hat","Glasses","Sunglasses","Jewellery","Choker","Hijab","Mask","Scarf","Earrings","Necklace","Bracelet","Watch"]
+  },
+  "Pose & Camera": {
+    "Pose": ["Standing","Walking","Running","Leaning","Tip-toe","Hands on hips","Arms crossed","Hands behind back","Over-shoulder look","Kneeling","Crouching","Squatting","Sitting","Lotus sitting","Lying on side","Lying on back","Reaching","Pointing","Jumping","Mid-air","Dancing"],
+    "Facing": ["Facing camera","Looking left","Looking right","Back turned, looking back"],
+    "View": ["Full length","Three-quarter","Waist-up","Bust","Close-up","Extreme close-up","Profile view","Rear view","Front view","Over-shoulder POV"],
+    "Camera Angle": ["Eye level","High camera angle","Low camera angle (hero)","Worm's eye","Top-down","Dutch tilt"]
+  },
+  "Environment & Lighting": {
+    "Location": ["Neon-lit alleyway","Rooftop city","Subway platform","Apartment","Forest clearing","Misty lake pier","Desert dunes","Snowy mountains","Coastline","Retro diner","Library","Cathedral","Train carriage","Airport terminal","Server room","Art gallery","Space station","Fantasy castle"],
+    "Time": ["Dawn","Golden hour","Blue hour","Midday","Overcast","Late afternoon","Sunset","Twilight","Night","Midnight","Neon night","Moonlit"],
+    "Lighting": ["Soft rim lighting","Soft diffused","Hard directional","Rim light","Backlit silhouette","Split lighting","Butterfly lighting","Rembrandt lighting","Cinematic teal-orange","Noir high-contrast","Volumetric god rays","Window light pattern","Practical lamps","Spotlight cone","Neon glow","Firelight","Candlelit","LED cool","Overcast softbox","Strobe freeze","Bokeh background","Light leaks","Colored gels red-blue","Moonlight cool","Studio three-point","Edge lighting","Daylight natural"],
+    "Atmosphere": ["Scattered rain","Mist","Fog","Drizzle","Pouring rain","Thunderstorm","Snow flurry","Blizzard","Windy swirls","Leaves swirling","Petals drifting","Fire embers","Ash fall","Aurora sky","Starry sky","City steam vents","Rain puddle reflections","Wet ground after rain"]
   }
-  function toggleValue(cat, sub, val){
-    const bucket = ensureCategory(cat);
-    if(!bucket.has(sub)) bucket.set(sub, new Set());
-    const set = bucket.get(sub);
-    if(set.has(val)) set.delete(val); else set.add(val);
-  }
-  function chosenValuesFlat(){
-    const set = new Set();
-    for(const [cat, map] of Object.entries(state.selections)){
-      if(map instanceof Map){
-        for(const [sub, subSet] of map.entries()){
-          subSet.forEach(v => set.add(v));
-        }
-      }
-    }
-    return set;
-  }
-  function detectConflicts(catKey, subKey, newVal){
-    const rules = CONFLICT_RULES[subKey] || CONFLICT_RULES[catKey] || [];
-    const chosen = chosenValuesFlat();
-    const clashes = [];
-    for(const [a,b] of rules){
-      if(newVal === a && chosen.has(b)) clashes.push(b);
-      if(newVal === b && chosen.has(a)) clashes.push(a);
-    }
-    return [...new Set(clashes)];
-  }
+};
 
-  function buildMenu(panel, catKey, catData){
-    panel.replaceChildren();
-    if(Array.isArray(catData)){
-      const row = document.createElement('div');
-      row.className = 'option-row';
-      row.dataset.category = catKey;
-      row.dataset.submenu = catKey;
-      catData.forEach(opt => row.appendChild(makeOption(catKey, catKey, opt)));
-      panel.appendChild(row);
-    }else{
-      Object.entries(catData).forEach(([subKey, value]) => {
-        const section = document.createElement('details');
-        section.className = 'section';
-        const summary = document.createElement('summary');
-        summary.textContent = subKey;
-        section.appendChild(summary);
-        const row = document.createElement('div');
-        row.className = 'option-row';
-        row.dataset.category = catKey;
-        row.dataset.submenu = subKey;
+/***************
+ * CONFLICTS   *
+ ***************/
+const GROUPS={
+  happy:["happy","smile","big smile","grin","laughing"],
+  sad:["sad","melancholic","crying","tearful"],
+  calm:["calm","serene","relaxed","neutral"],
+  angry:["angry","furious"],
+  openeyes:["eyes open"],
+  closedeyes:["eyes closed"],
+  yell:["yelling"],
+  whisper:["whispering"],
+  day:["daylight natural","midday","golden hour","dawn","late afternoon","overcast"],
+  night:["night","midnight","neon night","moonlit","moonlight cool"]
+};
+const GROUP_CONFLICTS=[["happy","sad"],["calm","angry"],["openeyes","closedeyes"],["yell","whisper"],["day","night"]];
+const CONFLICT_RULES={
+  "Face.Expression":"groups",
+  "Hair.Length":[["Short","Long"],["Short","Waist length"],["Medium","Waist length"]],
+  "Pose & Camera.Pose":[["Standing","Squatting"],["Kneeling","Jumping"],["Lying on back","Running"],["Lotus sitting","Walking"]],
+  "Environment & Lighting.Time":"groups"
+};
+function normalizeToGroup(val){ const s=val.toLowerCase(); for(const g in GROUPS){ if(GROUPS[g].some(x=>x.toLowerCase()===s)) return g;} return null; }
 
-        if(Array.isArray(value)){
-          value.forEach(opt => row.appendChild(makeOption(catKey, subKey, opt)));
-        }else if(typeof value === 'object' && value){
-          Object.entries(value).forEach(([nestedKey, nestedVals]) => {
-            const nestedSection = document.createElement('details');
-            nestedSection.className = 'section';
-            const nestedSummary = document.createElement('summary');
-            nestedSummary.textContent = nestedKey;
-            nestedSection.appendChild(nestedSummary);
+/*****************
+ * STATE         *
+ *****************/
+let selectedGender=null;
+const ethnicitySet=new Set();
+const selections={}; // path -> Set
+let openFlyout=null;
 
-            const nestedRow = document.createElement('div');
-            nestedRow.className = 'option-row';
-            nestedRow.dataset.category = catKey;
-            nestedRow.dataset.submenu = nestedKey;
-            (nestedVals || []).forEach(opt => nestedRow.appendChild(makeOption(catKey, nestedKey, opt)));
+/*****************
+ * HELPERS       *
+ *****************/
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
 
-            nestedSection.appendChild(nestedRow);
-            section.appendChild(nestedSection);
-          });
-        }
-        section.appendChild(row);
-        panel.appendChild(section);
-      });
-    }
-  }
-  function makeOption(catKey, subKey, label){
-    const btn = document.createElement('button');
-    btn.className = 'option';
-    btn.textContent = label;
-    btn.dataset.category = catKey;
-    btn.dataset.submenu = subKey;
-    btn.dataset.value = label;
-    btn.addEventListener('click', () => onOptionClick(btn));
-    return btn;
-  }
-  function updateActiveStates(){
-    document.querySelectorAll('.option').forEach(opt => {
-      const cat = opt.dataset.category;
-      const sub = opt.dataset.submenu;
-      const val = opt.dataset.value;
-      const map = state.selections[cat];
-      let active = false;
-      if(map instanceof Map && map.has(sub)){
-        active = map.get(sub).has(val);
-      }
-      opt.classList.toggle('active', active);
-    });
-    document.querySelectorAll('.pill[data-group="gender"]').forEach(p => {
-      const active = state.gender === p.dataset.value;
-      p.classList.toggle('active', active);
-      p.setAttribute('aria-pressed', String(active));
-    });
-  }
-  function rebuildSummary(){
-    const chips = document.getElementById('chips');
-    const summaryText = document.getElementById('summaryText');
-    chips.replaceChildren();
-    const parts = [];
-    if(state.gender) parts.push(state.gender);
-    if(Number.isFinite(state.age)) parts.push(`${state.age} years old`);
+/*****************
+ * UI BUILDERS   *
+ *****************/
+const genderPills=$("genderPills");
+GENDER.forEach(g=>{ const p=el('span','pill',g); p.onclick=()=>{ selectedGender=(selectedGender===g?null:g); [...genderPills.children].forEach(c=>c.classList.remove('active')); if(selectedGender) p.classList.add('active'); }; genderPills.appendChild(p); });
 
-    for(const [cat, map] of Object.entries(state.selections)){
-      if(!(map instanceof Map)) continue;
-      for(const [sub, set] of map.entries()){
-        if(!set.size) continue;
-        parts.push(`${(cat + (sub !== cat ? ' ' + sub : '')).toLowerCase()}: ${Array.from(set).join(', ')}`);
-        set.forEach(v => {
-          const chip = document.createElement('span');
-          chip.className = 'chip'; chip.textContent = v;
-          chips.appendChild(chip);
+const ethnicityOpts=$("ethnicityOpts"), ethnicityChips=$("ethnicityChips");
+ETHNICITIES.forEach(v=>{ const o=el('div','opt',v); o.onclick=()=>{ if(ethnicitySet.has(v)){ethnicitySet.delete(v); o.classList.remove('active');} else { ethnicitySet.add(v); o.classList.add('active'); } renderEthChips(); }; ethnicityOpts.appendChild(o); });
+function renderEthChips(){ ethnicityChips.innerHTML=''; [...ethnicitySet].forEach(tag=>{ const c=el('span','chip'); c.innerHTML=`${tag} <span class="x">✕</span>`; c.querySelector('.x').onclick=()=>{ ethnicitySet.delete(tag); [...ethnicityOpts.children].forEach(n=>{if(n.textContent===tag) n.classList.remove('active');}); renderEthChips(); }; ethnicityChips.appendChild(c); }); }
+document.querySelector('[data-open="ethnicity"]').onclick=(e)=>toggleFly(e.currentTarget, $("fly-ethnicity"));
+
+const catGrid=$("catGrid");
+Object.keys(CATALOG).forEach(cat=> buildCat(cat, CATALOG[cat]));
+
+function buildCat(name, spec){
+  const wrap=el('div','cat');
+  const btn=el('div','pill', name+' ▾');
+  const fly=el('div','fly');
+  btn.onclick=(e)=>{ openOne(wrap); };
+  function buildLevel(obj, parentPath){
+    for(const key in obj){
+      const val=obj[key];
+      if(Array.isArray(val)){
+        fly.appendChild(el('h5',null,key));
+        const grid=el('div','fly opt-grid'.replace('fly ',''));
+        const path=parentPath? parentPath+'.'+key : name+'.'+key;
+        if(!selections[path]) selections[path]=new Set();
+        val.forEach(item=>{
+          const cell=el('div','opt',item);
+          cell.onclick=()=>toggleSelect(path,item,cell);
+          grid.appendChild(cell);
         });
+        fly.appendChild(grid);
+      }else if(typeof val==='object'){
+        fly.appendChild(el('h5',null,key));
+        buildLevel(val, parentPath? parentPath+'.'+key : name+'.'+key);
       }
     }
-    summaryText.textContent = parts.length ? parts.join(' • ') : 'Nothing selected yet.';
   }
+  buildLevel(spec, name);
+  wrap.appendChild(btn); wrap.appendChild(fly); catGrid.appendChild(wrap);
+}
 
-  function onOptionClick(btn){
-    const cat = btn.dataset.category;
-    const sub = btn.dataset.submenu;
-    const val = btn.dataset.value;
+function openOne(wrap){
+  document.querySelectorAll('.cat').forEach(c=>{ if(c!==wrap) c.classList.remove('open'); });
+  wrap.classList.toggle('open');
+  // Keep flyout within viewport
+  const fly=wrap.querySelector('.fly');
+  if(!fly) return;
+  const r=fly.getBoundingClientRect();
+  if(r.right>window.innerWidth-10){ fly.style.left = (window.innerWidth-10 - r.width - fly.parentElement.getBoundingClientRect().left)+'px'; }
+  if(r.bottom>window.innerHeight-10){ fly.style.maxHeight = (window.innerHeight - r.top - 20)+'px'; }
+}
+function toggleFly(trigger, fly){
+  const parent=trigger.parentElement;
+  if(openFlyout && openFlyout!==parent) openFlyout.classList.remove('open');
+  parent.classList.toggle('open');
+  openFlyout = parent.classList.contains('open') ? parent : null;
+}
+window.addEventListener('click', (e)=>{
+  if(!e.target.closest('.cat') && !e.target.closest('.fly') && !e.target.closest('[data-open]')){
+    document.querySelectorAll('.cat').forEach(c=>c.classList.remove('open'));
+    openFlyout=null;
+  }
+});
 
-    const willAdd = !((state.selections[cat] instanceof Map) && state.selections[cat].get(sub)?.has(val));
-    const conflicts = willAdd ? detectConflicts(cat, sub, val) : [];
-
-    if(willAdd && conflicts.length){
-      showConflictModal(val, conflicts, () => {
-        toggleValue(cat, sub, val);
-        updateActiveStates();
-        rebuildSummary();
-      });
-    }else{
-      toggleValue(cat, sub, val);
-      updateActiveStates();
-      rebuildSummary();
+/*****************
+ * CONFLICT LOGIC*
+ *****************/
+function findClash(path, item){
+  const rule=CONFLICT_RULES[path];
+  const set=selections[path]? [...selections[path]] : [];
+  if(rule==="groups"){
+    const gi=normalizeToGroup(item); if(!gi) return null;
+    for(const chosen of set){
+      const gj=normalizeToGroup(chosen); if(!gj) continue;
+      if(GROUP_CONFLICTS.some(([a,b])=> (gi===a&&gj===b)||(gi===b&&gj===a))) return chosen;
+    }
+    return null;
+  }
+  if(Array.isArray(rule)){
+    const norm=s=>s.toLowerCase();
+    for(const chosen of set){
+      for(const [a,b] of rule){
+        if( (norm(item)===norm(a) && norm(chosen)===norm(b)) || (norm(item)===norm(b) && norm(chosen)===norm(a)) ) return chosen;
+      }
     }
   }
-  function showConflictModal(value, conflictingList, onConfirm){
-    const modalRoot = document.getElementById('modalRoot');
-    const page = document.getElementById('page');
-    page.classList.add('blurred');
-    modalRoot.style.display = 'block';
-    modalRoot.innerHTML = `
-      <div class="modal-backdrop">
-        <div class="modal" role="dialog" aria-modal="true">
-          <h3>Potential Prompt Clash</h3>
-          <p>Are you sure you wish to select ‘<strong>${value}</strong>’? This prompt may clash with some of your previous selections: ‘<strong>${conflictingList.join("’, ‘")}</strong>’.</p>
-          <div class="actions">
-            <button class="btn ok" id="confirmAdd">Yes, add anyway! 😁</button>
-            <button class="btn cancel" id="cancelAdd">No! 😲 – I didn’t mean to do that 😅</button>
-          </div>
-        </div>
-      </div>
-    `;
-    document.getElementById('confirmAdd').onclick = () => { closeModal(); onConfirm && onConfirm(); };
-    document.getElementById('cancelAdd').onclick = () => { closeModal(); };
-  }
-  function closeModal(){
-    const modalRoot = document.getElementById('modalRoot');
-    const page = document.getElementById('page');
-    page.classList.remove('blurred');
-    modalRoot.style.display = 'none';
-    modalRoot.innerHTML = '';
+  return null;
+}
+let pendingPath=null,pendingItem=null,pendingCell=null,pendingClash=null;
+const clashModal=$("clashModal"), clashText=$("clashText");
+function openModal(){ document.body.classList.add('modal-open'); }
+function closeModal(){ document.body.classList.remove('modal-open'); pendingPath=pendingItem=pendingCell=pendingClash=null; }
+
+$("acceptClash").onclick=()=>{ if(pendingPath&&pendingItem&&pendingCell) commitSelection(pendingPath,pendingItem,pendingCell); closeModal(); };
+$("denyClash").onclick=closeModal; $("modalOverlay").onclick=closeModal;
+
+function toggleSelect(path,item,cell){
+  const clashWith=findClash(path,item);
+  if(clashWith){ pendingPath=path; pendingItem=item; pendingCell=cell; pendingClash=clashWith; clashText.textContent=`Are you sure you wish to select "${item}"? This may clash with "${clashWith}".`; openModal(); return; }
+  commitSelection(path,item,cell);
+}
+function commitSelection(path,item,cell){
+  const set=selections[path]||(selections[path]=new Set());
+  if(set.has(item)){ set.delete(item); cell.classList.remove('active'); }
+  else { set.add(item); cell.classList.add('active'); }
+}
+
+/*****************
+ * BLUR TOGGLES  *
+ *****************/
+$("btnGlobal").onclick=()=>{ $("btnGlobal").classList.add('active'); $("btnPanel").classList.remove('active'); document.body.classList.remove('panel-blur'); document.body.classList.add('global-blur'); };
+$("btnPanel").onclick=()=>{ $("btnPanel").classList.add('active'); $("btnGlobal").classList.remove('active'); document.body.classList.remove('global-blur'); document.body.classList.add('panel-blur'); };
+document.body.classList.add('global-blur');
+
+/*****************
+ * BUILD / RESET *
+ *****************/
+function groupedBrackets(){
+  const groups = [
+    ["FACE", ["Face.Face Shape","Face.Skin","Face.Expression","Face.Eyes.Eye Colour"]],
+    ["HAIR", ["Hair.Style","Hair.Length","Hair.Colour.Base","Hair.Colour.Highlights"]],
+    ["BODY", ["Body.Build","Body.Skin Detail"]],
+    ["ATTIRE", ["Attire.Clothing","Attire.Underwear.Bra","Attire.Underwear.Bottoms","Attire.Underwear.State","Attire.Feet","Attire.Accessories"]],
+    ["POSE & CAMERA", ["Pose & Camera.Pose","Pose & Camera.Facing","Pose & Camera.View","Pose & Camera.Camera Angle"]],
+    ["ENVIRONMENT / LIGHTING", ["Environment & Lighting.Location","Environment & Lighting.Time","Environment & Lighting.Lighting","Environment & Lighting.Atmosphere"]]
+  ];
+  const partsVisual=[]; // with headers
+  const partsRaw=[];    // brackets only
+
+  // prepend gender/age/ethnicity into FACE group visually & raw
+  const headBits=[];
+  if(selectedGender) headBits.push("female character".replace("Female","female").replace("Male","male").replace("female","female").replace("male","male").replace("character","character"));
+  const age=$("ageInput").value.trim(); if(age) headBits.push(`${age} years old`);
+  if(ethnicitySet.size) headBits.push('ethnicity: '+[...ethnicitySet].join(', '));
+
+  // FACE header & bracket line including headBits + any face bits
+  function fetchSet(path){ const s=selections[path]; return s? [...s] : []; }
+
+  let faceCollected=[...headBits, ...fetchSet("Face.Face Shape"), ...fetchSet("Face.Skin"), ...fetchSet("Face.Expression"), ...fetchSet("Face.Eyes.Eye Colour")].filter(Boolean);
+  if(faceCollected.length){
+    partsVisual.push("— FACE —","("+faceCollected.join(", ")+"),");
+    partsRaw.push("("+faceCollected.join(", ")+"),");
   }
 
-  function initMenus(){
-    document.querySelectorAll('.menu-button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = btn.dataset.menu;
-        const panel = document.querySelector(`.menu[data-menu-panel="${key}"]`);
-        if(!panel) return;
-        panel.classList.toggle('hidden');
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-      });
-    });
-    document.addEventListener('click', (e) => {
-      document.querySelectorAll('.menu').forEach(menu => {
-        const btn = document.querySelector(`.menu-button[data-menu="${menu.dataset.menuPanel}"]`);
-        if(menu.classList.contains('hidden')) return;
-        const within = e.target.closest('.menu') || e.target.closest('.menu-button');
-        if(!within){
-          menu.classList.add('hidden');
-          if(btn) btn.setAttribute('aria-expanded','false');
+  for(const [label, paths] of groups.slice(1)){ // remaining groups
+    const list=[];
+    paths.forEach(p=> list.push(...fetchSet(p)));
+    const clean=list.filter(Boolean);
+    if(clean.length){
+      partsVisual.push(`— ${label} —`,"("+clean.join(", ")+"),");
+      partsRaw.push("("+clean.join(", ")+"),");
+    }
+  }
+  return {visual: partsVisual.join("\n") + (partsVisual.length? "\n":""), raw: partsRaw.join("\n").replace(/,\s*$/,"")};
+}
+
+function build(){
+  const {visual, raw} = groupedBrackets();
+  $("outPos").value = visual || "(select options then Build)";
+  // store raw for copy
+  $("outPos").dataset.raw = raw || "";
+}
+
+$("btnBuild").onclick=build;
+window.addEventListener('keydown',(e)=>{ if((e.ctrlKey||e.metaKey)&&e.key==='Enter') build(); });
+
+$("btnReset").onclick=()=>{
+  selectedGender=null; [...genderPills.children].forEach(c=>c.classList.remove('active'));
+  $("ageInput").value='';
+  ethnicitySet.clear(); renderEthChips();
+  Object.keys(selections).forEach(k=>selections[k].clear());
+  document.querySelectorAll('.opt.active').forEach(o=>o.classList.remove('active'));
+  $("outPos").value=''; $("outNeg").value='';
+};
+
+/* Copy: strip visual headers, keep brackets only */
+function copyRawFrom(id){
+  if(id==="outPos"){
+    const raw = $("outPos").dataset.raw || "";
+    navigator.clipboard.writeText(raw);
+  } else {
+    const t=$(id); t.select(); document.execCommand('copy');
+  }
+}
+$("copyPos").onclick=()=>copyRawFrom("outPos");
+$("copyNeg").onclick=()=>copyRawFrom("outNeg");
+
+$("loadNegStd").onclick=()=>{
+  const defNeg = [
+    'blurry, low-res, jpeg artifacts, overexposed, underexposed, washed out, banding, glitches',
+    'extra limbs, extra fingers, fewer fingers, bad hands, malformed hands, deformed feet, disfigured',
+    'cross-eye, lazy eye, asymmetrical eyes, wonky eyes, poorly drawn eyes, deformed iris, deformed pupil',
+    'mutated anatomy, bad proportions, long neck, missing limbs, fused fingers, disconnected limbs',
+    'duplicate subject, cloned face, watermark, signature, text overlay, logo, frame, border',
+    'wrong perspective, distorted perspective, excessive grain, motion blur (unwanted)'
+  ].join(', ');
+  $("outNeg").value = defNeg;
+};
+
+/*****************
+ * TEMPLATES     *
+ *****************/
+const DEFAULT_TEMPLATES=[
+  {name:"Catwoman – Seductive Thief", data:{
+    "Face":{"Face Shape":["Heart-shaped"],"Skin":["Tanned smooth skin"],"Expression":["Sultry"],"Eyes":{"Eye Colour":["Deep blue"]}},
+    "Hair":{"Style":["Straight"],"Length":["Long"],"Colour":{"Base":["Black"],"Highlights":[]}},
+    "Body":{"Build":["Athletic"],"Skin Detail":["Glossy finish"]},
+    "Attire":{"Clothing":["Catsuit"],"Underwear":{"Bra":[],"Bottoms":[],"State":["décolleté"]},"Feet":["Stiletto heels"],"Accessories":["Mask","Gloves","Whip"]},
+    "Pose & Camera":{"Pose":["Leaning"],"Facing":["Facing camera"],"View":["Full length"],"Camera Angle":["Low camera angle (hero)"]},
+    "Environment & Lighting":{"Location":["Neon-lit alleyway"],"Time":["Night"],"Lighting":["Soft rim lighting","Neon glow"],"Atmosphere":["Scattered rain"]}
+  }},
+  {name:"Lara Croft", data:{
+    "Face":{"Face Shape":["Square"],"Skin":["Tanned smooth skin"],"Expression":["Determined"]},
+    "Hair":{"Style":["Braid"],"Length":["Long"],"Colour":{"Base":["Brunette"],"Highlights":[]}},
+    "Body":{"Build":["Athletic"]},
+    "Attire":{"Clothing":["Tank top","Shorts"],"Accessories":["Gloves","Holster"]},
+    "Pose & Camera":{"Pose":["Running"],"Facing":["Facing camera"],"View":["Full length"],"Camera Angle":["High camera angle"]},
+    "Environment & Lighting":{"Location":["Rooftop city"],"Time":["Golden hour"],"Lighting":["Hard directional"],"Atmosphere":["Dust motes"]}
+  }},
+  {name:"Wonder Woman", data:{
+    "Face":{"Face Shape":["Oval"],"Expression":["Confident"]},
+    "Hair":{"Style":["Wavy"],"Length":["Long"],"Colour":{"Base":["Black"]}},
+    "Body":{"Build":["Muscular"]},
+    "Attire":{"Accessories":["Tiara","Bracelets","Cape"]},
+    "Pose & Camera":{"Pose":["Standing"],"Facing":["Facing camera"],"View":["Full length"],"Camera Angle":["Low camera angle (hero)"]},
+    "Environment & Lighting":{"Location":["Cathedral"],"Time":["Daylight natural"],"Lighting":["Backlit silhouette"]}
+  }},
+  {name:"Poison Ivy", data:{
+    "Face":{"Face Shape":["Heart-shaped"],"Skin":["Olive smooth skin"],"Expression":["Calm"]},
+    "Hair":{"Style":["Wavy"],"Length":["Long"],"Colour":{"Base":["Red"],"Highlights":["Green"]}},
+    "Body":{"Build":["Curvy"]},
+    "Attire":{"Accessories":["Leaf crown"]},
+    "Pose & Camera":{"Pose":["Standing"],"Facing":["Facing camera"],"View":["Three-quarter"]},
+    "Environment & Lighting":{"Location":["Forest clearing"],"Time":["Twilight"],"Lighting":["Soft diffused","Colored gels red-blue"],"Atmosphere":["Leaves swirling"]}
+  }},
+  {name:"Princess Leia", data:{
+    "Hair":{"Style":["Hair bun"],"Length":["Shoulder length"],"Colour":{"Base":["Brown"]}},
+    "Pose & Camera":{"Pose":["Standing"],"Facing":["Facing camera"],"View":["Waist-up"]},
+    "Environment & Lighting":{"Location":["Space station"],"Time":["Daylight natural"],"Lighting":["Soft diffused"]}
+  }},
+  {name:"Daenerys Targaryen", data:{
+    "Hair":{"Style":["Braided"],"Length":["Long"],"Colour":{"Base":["White"],"Highlights":["Silver"]}},
+    "Face":{"Face Shape":["Oval"],"Skin":["Porcelain smooth skin"]},
+    "Pose & Camera":{"Pose":["Standing"],"Facing":["Facing camera"],"View":["Three-quarter"]},
+    "Environment & Lighting":{"Location":["Fantasy castle"],"Time":["Blue hour"],"Lighting":["Volumetric god rays"]}
+  }},
+  {name:"Mikaela Banes", data:{
+    "Hair":{"Style":["Wavy"],"Length":["Long"],"Colour":{"Base":["Brunette"]}},
+    "Pose & Camera":{"Pose":["Leaning"],"Facing":["Facing camera"],"View":["Full length"],"Camera Angle":["Dutch tilt"]},
+    "Environment & Lighting":{"Location":["Industrial garage"],"Time":["Golden hour"],"Lighting":["Hard directional","Warm practicals"]}
+  }}
+];
+
+const LS_KEY="xs_prompt_builder_templates_v1";
+function loadUserTemplates(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(e){ return []; } }
+function saveUserTemplates(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+
+function applyTemplateData(data){
+  // Clear all current selections
+  Object.keys(selections).forEach(k=>selections[k].clear());
+  document.querySelectorAll('.opt.active').forEach(o=>o.classList.remove('active'));
+  // Set values
+  function mark(path, arr){
+    if(!arr || !arr.length) return;
+    if(!selections[path]) selections[path]=new Set();
+    arr.forEach(v=> selections[path].add(v));
+  }
+  // Traverse data
+  for(const top in data){
+    const sub=data[top];
+    for(const k in sub){
+      const val=sub[k];
+      if(Array.isArray(val)){
+        const path=`${top}.${k}`;
+        mark(path, val);
+      }else if(typeof val==='object'){
+        for(const k2 in val){
+          const path=`${top}.${k}.${k2}`;
+          mark(path, val[k2]);
         }
-      });
-    });
+      }
+    }
   }
-  function initGender(){
-    document.getElementById('genderGroup').addEventListener('click', (e) => {
-      const btn = e.target.closest('.pill[data-group="gender"]'); if(!btn) return;
-      const val = btn.dataset.value;
-      state.gender = (state.gender === val) ? null : val;
-      updateActiveStates(); rebuildSummary();
-    });
-  }
-  function initAge(){
-    const input = document.getElementById('ageInput');
-    input.addEventListener('input', () => {
-      const v = parseInt(input.value, 10);
-      state.age = Number.isFinite(v) ? Math.max(18, Math.min(120, v)) : null;
-      rebuildSummary();
-    });
-  }
-  function hydrateMenus(){
-    buildMenu(document.querySelector('.menu[data-menu-panel="Face"]'), 'Face', DATA['Face']);
-    buildMenu(document.querySelector('.menu[data-menu-panel="Hair"]'), 'Hair', DATA['Hair']);
-    buildMenu(document.querySelector('.menu[data-menu-panel="Ethnicity"]'), 'Ethnicity', DATA['Ethnicity']);
-  }
+  // Reflect UI
+  document.querySelectorAll('.opt').forEach(node=>{
+    const cellText=node.textContent.trim();
+    const parent = node.closest('.fly');
+    if(!parent) return;
+    // Build path guess: from preceding headers stack (simplified by scanning DOM ancestors)
+    // Fallback: set active if value appears in any selected set (safe enough)
+    for(const path in selections){
+      if(selections[path].has(cellText)){ node.classList.add('active'); break; }
+    }
+  });
+  build(); // update output
+}
 
-  initMenus();
-  initGender();
-  initAge();
-  hydrateMenus();
-  updateActiveStates();
-  rebuildSummary();
+/* Build template select */
+const templateSelect=$("templateSelect");
+function renderTemplateSelect(){
+  templateSelect.innerHTML="";
+  const opt0 = new Option("Choose a template…","");
+  templateSelect.appendChild(opt0);
+  const defGroup = document.createElement("optgroup"); defGroup.label="Character Templates";
+  DEFAULT_TEMPLATES.forEach((t,i)=>{ const o=new Option(t.name, "def:"+i); defGroup.appendChild(o); });
+  templateSelect.appendChild(defGroup);
 
-  // Checklist snapshot embedded:
-  // - Video background integrated.
-  // - Gender helper note removed.
-  // - Ethnicity dropdown (multi-select) added.
-  // - Face vs Hair structure split as requested.
-  // - DATA-driven menus + smart conflicts.
+  const my = loadUserTemplates();
+  const myGroup = document.createElement("optgroup"); myGroup.label="My Characters";
+  my.forEach((t,i)=>{ const o=new Option(t.name, "usr:"+i); myGroup.appendChild(o); });
+  // Add creator option as a selectable entry at end of group as well
+  templateSelect.appendChild(myGroup);
+}
+renderTemplateSelect();
+
+templateSelect.addEventListener('change', (e)=>{
+  const v=e.target.value; if(!v) return;
+  if(v.startsWith("def:")){ const idx=+v.split(":")[1]; applyTemplateData(DEFAULT_TEMPLATES[idx].data); }
+  else if(v.startsWith("usr:")){ const idx=+v.split(":")[1]; const my=loadUserTemplates(); if(my[idx]) applyTemplateData(my[idx].data); }
+  templateSelect.value="";
+});
+
+/* New template modal */
+const tmplModal=$("templateModal"); const tmplName=$("tmplName");
+$("btnNewTemplate").onclick=()=>{ tmplName.value=""; tmplModal.style.display="grid"; document.body.classList.add('modal-open'); };
+$("tmplOverlay").onclick=closeTmpl; $("cancelTmpl").onclick=closeTmpl;
+function closeTmpl(){ tmplModal.style.display="none"; document.body.classList.remove('modal-open'); }
+$("saveTmpl").onclick=()=>{
+  const name=(tmplName.value||"My Character").trim();
+  const data = snapshotSelections();
+  const my = loadUserTemplates(); my.push({name, data}); saveUserTemplates(my);
+  renderTemplateSelect(); closeTmpl();
+};
+
+/* Snapshot current selections into the same shape as defaults */
+function snapshotSelections(){
+  const out={};
+  function pick(prefix){
+    const obj={};
+    for(const path in selections){
+      if(path.startsWith(prefix+".")){
+        const rest=path.slice(prefix.length+1);
+        const parts=rest.split(".");
+        if(parts.length===1){ obj[parts[0]]=[...selections[path]]; }
+        else { obj[parts[0]] = obj[parts[0]]||{}; obj[parts[0]][parts[1]]=[...selections[path]]; }
+      }
+    }
+    return obj;
+  }
+  ["Face","Hair","Body","Attire","Pose & Camera","Environment & Lighting"].forEach(top=>{ const got=pick(top); if(Object.keys(got).length) out[top]=got; });
+  return out;
+}
+
+/*****************
+ * VIDEO TONES   *
+ *****************/
+/* Extract an approximate average color from the video first frame to theme accents */
+(function themeFromVideo(){
+  const v=$("bgVideo");
+  const cvs=document.createElement('canvas'), ctx=cvs.getContext('2d');
+  v.addEventListener('loadeddata', ()=>{
+    try{
+      cvs.width=160; cvs.height=90;
+      ctx.drawImage(v,0,0,cvs.width,cvs.height);
+      const d=ctx.getImageData(0,0,cvs.width,cvs.height).data;
+      let r=0,g=0,b=0,count=0;
+      for(let i=0;i<d.length;i+=40){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; count++; }
+      r=Math.round(r/count); g=Math.round(g/count); b=Math.round(b/count);
+      const accent=`rgb(${r},${g},${b})`;
+      document.documentElement.style.setProperty('--accent', accent);
+      // create a second accent by lightening
+      const accent2=`rgba(${Math.min(r+40,255)},${Math.min(g+40,255)},${Math.min(b+40,255)},1)`;
+      document.documentElement.style.setProperty('--accent-2', accent2);
+    }catch(e){ /* ignore cross-origin issues */ }
+  }, {once:true});
+})();
+
 </script>
 </body>
 </html>
